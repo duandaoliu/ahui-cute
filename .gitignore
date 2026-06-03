@@ -1,3 +1,5 @@
-__pycache__/
-*.pyc
-.DS_Store
+# 忽略一切
+/*
+# 除了这些
+!.gitignore
+!index.html
