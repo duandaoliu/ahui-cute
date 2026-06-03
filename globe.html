@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 地球仪 - 领土面积前十国家</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --panel-bg: rgba(15, 15, 25, 0.95);
+    --text: #e0e0e0;
+    --accent: #64b5f6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+  }
+  body:active { cursor: grabbing; }
+  body.pointing { cursor: pointer; }
+
+  #globe-container {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+  }
+  canvas { display: block; }
+
+  /* 顶部标题栏 */
+  #title-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  #title-bar h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 40px rgba(100,180,255,0.5);
+    background: linear-gradient(180deg, rgba(10,10,15,0.9) 0%, transparent 100%);
+    padding: 12px 32px 20px;
+    border-radius: 16px;
+  }
+
+  /* 底部图例 */
+  #legend {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: var(--panel-bg);
+    border-radius: 16px;
+    padding: 12px 18px;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #ccc;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.25s;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .legend-item:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.25);
+    color: #fff;
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .legend-rank {
+    font-weight: 700;
+    color: #888;
+    font-size: 0.65rem;
+    min-width: 14px;
+  }
+
+  /* 信息提示框 */
+  #tooltip {
+    position: fixed;
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    background: var(--panel-bg);
+    border-radius: 12px;
+    padding: 14px 18px;
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(20px);
+    color: #fff;
+    font-size: 0.85rem;
+    min-width: 180px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  #tooltip.visible { opacity: 1; }
+  #tooltip .country-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  #tooltip .area {
+    color: #aaa;
+    font-size: 0.75rem;
+    margin-bottom: 8px;
+  }
+  #tooltip .city-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 3px 0;
+    font-size: 0.8rem;
+  }
+  #tooltip .city-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  #tooltip .city-dot.capital { background: #ffd740; box-shadow: 0 0 6px #ffd740; }
+  #tooltip .city-dot.second  { background: #80cbc4; box-shadow: 0 0 6px #80cbc4; }
+
+  /* 城市标签 */
+  .city-label {
+    position: fixed;
+    z-index: 5;
+    pointer-events: none;
+    font-size: 0.7rem;
+    color: #fff;
+    text-shadow: 0 0 8px rgba(0,0,0,0.8), 0 0 3px rgba(0,0,0,0.6);
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s, font-size 0.3s;
+    opacity: 0.6;
+    letter-spacing: 0.02em;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .city-label.highlighted {
+    opacity: 1;
+    font-size: 0.85rem;
+    z-index: 6;
+  }
+  .city-label .dot-indicator {
+    display: block;
+    margin: 0 auto 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+  }
+  .city-label .dot-indicator.capital { background: #ffd740; }
+  .city-label .dot-indicator.second  { background: #80cbc4; }
+  .city-label.highlighted .dot-indicator { width: 6px; height: 6px; }
+
+  /* 响应式 */
+  @media (max-width: 768px) {
+    #title-bar h1 { font-size: 1.1rem; padding: 8px 20px 14px; }
+    #legend { gap: 4px; padding: 8px 12px; border-radius: 12px; }
+    .legend-item { font-size: 0.65rem; padding: 3px 7px; }
+    #tooltip { font-size: 0.75rem; padding: 10px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="globe-container"></div>
+
+<div id="title-bar">
+  <h1>🌍 领土面积前十国家 · 首都与第二大城市</h1>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="legend"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// 数据定义：领土面积前十国家
+// ============================================================
+
+const countries = [
+  {
+    id: 1,
+    name: 'Russia',
+    nameCN: '俄罗斯',
+    area: '17,098,246 km²',
+    rank: 1,
+    color: '#e74c3c',
+    cities: [
+      { name: 'Moscow', nameCN: '莫斯科', lat: 55.7558, lon: 37.6173, type: 'capital' },
+      { name: 'Saint Petersburg', nameCN: '圣彼得堡', lat: 59.9343, lon: 30.3351, type: 'second' }
+    ],
+    // 简化边界 [lon, lat] 对 — 俄罗斯（含东西两部分）
+    polygon: [
+      [19.6,54.5],[22,55],[28,57],[32,60],[30,64],[32,67],[34,69],[40,68],[44,68],
+      [48,66],[52,68],[55,70],[60,68],[65,70],[70,67],[75,68],[80,71],[85,73],
+      [90,72],[100,73],[110,72],[120,72],[130,70],[140,65],[150,63],[160,62],
+      [170,64],[180,65],[180,60],[175,56],[168,52],[160,48],[150,46],[143,42],
+      [135,43],[130,48],[125,50],[115,47],[110,50],[100,50],[90,48],[80,50],
+      [72,52],[65,53],[58,50],[50,48],[45,48],[40,48],[36,49],[32,47],[28,50],
+      [22,52],[19.6,54.5]
+    ],
+    // 俄罗斯远东部分（跨越180°经线的部分，用负经度表示）
+    polygonEast: [
+      [-170,64],[-175,66],[-180,65],[-180,62],[-175,60],[-170,62],[-170,64]
+    ]
+  },
+  {
+    id: 2,
+    name: 'Canada',
+    nameCN: '加拿大',
+    area: '9,984,670 km²',
+    rank: 2,
+    color: '#e67e22',
+    cities: [
+      { name: 'Ottawa', nameCN: '渥太华', lat: 45.4215, lon: -75.6972, type: 'capital' },
+      { name: 'Montreal', nameCN: '蒙特利尔', lat: 45.5017, lon: -73.5673, type: 'second' }
+    ],
+    polygon: [
+      [-141,70],[-137,70],[-134,72],[-130,70],[-125,70],[-120,72],[-115,73],
+      [-110,72],[-105,70],[-100,73],[-95,72],[-90,73],[-85,74],[-80,74],
+      [-75,72],[-70,67],[-65,67],[-62,65],[-65,60],[-68,58],[-70,54],
+      [-75,52],[-78,50],[-80,48],[-83,46],[-85,47],[-88,48],[-92,48],
+      [-95,49],[-100,49],[-105,49],[-110,49],[-115,49],[-120,50],
+      [-125,50],[-130,54],[-133,56],[-136,57],[-139,58],[-141,62],[-141,70]
+    ]
+  },
+  {
+    id: 3,
+    name: 'China',
+    nameCN: '中国',
+    area: '9,596,961 km²',
+    rank: 3,
+    color: '#f1c40f',
+    cities: [
+      { name: 'Beijing', nameCN: '北京', lat: 39.9042, lon: 116.4074, type: 'capital' },
+      { name: 'Shanghai', nameCN: '上海', lat: 31.2304, lon: 121.4737, type: 'second' }
+    ],
+    polygon: [
+      [73,40],[76,41],[80,42],[83,43],[87,45],[90,46],[95,45],[98,43],
+      [100,42],[103,38],[105,36],[107,34],[108,32],[109,30],[110,28],
+      [112,27],[114,29],[116,28],[118,27],[120,28],[122,30],[124,32],
+      [125,34],[126,37],[127,39],[128,41],[127,44],[124,48],[123,50],
+      [122,52],[120,54],[116,55],[113,53],[110,53],[108,50],[104,47],
+      [98,46],[95,45],[92,44],[88,44],[85,43],[80,42],[77,40],[73,40]
+    ]
+  },
+  {
+    id: 4,
+    name: 'United States',
+    nameCN: '美国',
+    area: '9,525,067 km²',
+    rank: 4,
+    color: '#3498db',
+    cities: [
+      { name: 'Washington D.C.', nameCN: '华盛顿', lat: 38.9072, lon: -77.0369, type: 'capital' },
+      { name: 'Los Angeles', nameCN: '洛杉矶', lat: 34.0522, lon: -118.2437, type: 'second' }
+    ],
+    polygon: [
+      [-124,48],[-123,46],[-122,44],[-121,42],[-120,38],[-118,36],[-117,34],
+      [-115,33],[-114,32],[-111,32],[-108,31],[-106,30],[-104,30],[-102,31],
+      [-100,29],[-98,28],[-96,28],[-94,29],[-92,30],[-89,30],[-87,31],
+      [-84,31],[-82,30],[-81,29],[-80,28],[-81,27],[-83,25],[-85,26],
+      [-86,28],[-88,29],[-89,31],[-90,32],[-91,33],[-93,35],[-95,36],
+      [-96,38],[-97,40],[-98,42],[-100,43],[-102,44],[-104,45],[-106,46],
+      [-108,47],[-110,47],[-112,48],[-114,48],[-116,48],[-118,48],[-120,49],
+      [-122,49],[-124,48]
+    ],
+    polygonAlaska: [
+      [-168,66],[-162,68],[-158,66],[-154,64],[-152,62],[-150,59],
+      [-148,58],[-152,56],[-155,56],[-158,57],[-160,58],[-163,60],
+      [-165,62],[-166,64],[-168,66]
+    ]
+  },
+  {
+    id: 5,
+    name: 'Brazil',
+    nameCN: '巴西',
+    area: '8,515,767 km²',
+    rank: 5,
+    color: '#2ecc71',
+    cities: [
+      { name: 'Brasília', nameCN: '巴西利亚', lat: -15.7801, lon: -47.9292, type: 'capital' },
+      { name: 'Rio de Janeiro', nameCN: '里约热内卢', lat: -22.9068, lon: -43.1729, type: 'second' }
+    ],
+    polygon: [
+      [-72,2],[-70,0],[-68,-2],[-66,-3],[-64,-4],[-60,-3],[-57,-2],
+      [-55,-1],[-53,0],[-50,0],[-48,-1],[-45,-2],[-43,-3],[-40,-3],
+      [-37,-5],[-36,-8],[-35,-10],[-35,-12],[-36,-15],[-37,-18],
+      [-38,-20],[-40,-22],[-42,-23],[-44,-23],[-46,-22],[-48,-22],
+      [-50,-23],[-52,-24],[-54,-24],[-56,-23],[-57,-21],[-58,-19],
+      [-58,-17],[-58,-15],[-59,-13],[-61,-10],[-63,-8],[-65,-6],
+      [-66,-4],[-67,-2],[-68,0],[-70,0],[-72,2]
+    ]
+  },
+  {
+    id: 6,
+    name: 'Australia',
+    nameCN: '澳大利亚',
+    area: '7,692,024 km²',
+    rank: 6,
+    color: '#9b59b6',
+    cities: [
+      { name: 'Canberra', nameCN: '堪培拉', lat: -35.2809, lon: 149.1300, type: 'capital' },
+      { name: 'Melbourne', nameCN: '墨尔本', lat: -37.8136, lon: 144.9631, type: 'second' }
+    ],
+    polygon: [
+      [115,-21],[116,-22],[118,-24],[120,-25],[122,-26],[124,-27],
+      [128,-29],[130,-31],[132,-32],[134,-33],[136,-34],[138,-34],
+      [140,-35],[142,-35],[144,-35],[146,-34],[147,-33],[149,-32],
+      [151,-31],[152,-29],[153,-27],[153,-25],[152,-23],[151,-20],
+      [150,-18],[148,-16],[145,-15],[142,-14],[140,-12],[138,-12],
+      [136,-13],[134,-13],[132,-13],[130,-12],[128,-11],[126,-11],
+      [124,-12],[122,-13],[120,-14],[118,-16],[116,-18],[115,-20],[115,-21]
+    ]
+  },
+  {
+    id: 7,
+    name: 'India',
+    nameCN: '印度',
+    area: '3,287,263 km²',
+    rank: 7,
+    color: '#1abc9c',
+    cities: [
+      { name: 'New Delhi', nameCN: '新德里', lat: 28.6139, lon: 77.2090, type: 'capital' },
+      { name: 'Mumbai', nameCN: '孟买', lat: 19.0760, lon: 72.8777, type: 'second' }
+    ],
+    polygon: [
+      [68,24],[70,23],[72,22],[73,20],[74,18],[75,16],[77,15],
+      [79,14],[80,13],[82,13],[84,14],[86,14],[88,15],[89,16],
+      [91,18],[92,20],[93,22],[94,25],[95,27],[94,29],[93,31],
+      [92,33],[90,35],[88,36],[86,37],[83,37],[80,36],[78,35],
+      [76,34],[74,32],[72,31],[70,30],[69,28],[68,26],[68,24]
+    ]
+  },
+  {
+    id: 8,
+    name: 'Argentina',
+    nameCN: '阿根廷',
+    area: '2,780,400 km²',
+    rank: 8,
+    color: '#e91e63',
+    cities: [
+      { name: 'Buenos Aires', nameCN: '布宜诺斯艾利斯', lat: -34.6037, lon: -58.3816, type: 'capital' },
+      { name: 'Córdoba', nameCN: '科尔多瓦', lat: -31.4201, lon: -64.1888, type: 'second' }
+    ],
+    polygon: [
+      [-68,-22],[-66,-23],[-64,-24],[-62,-26],[-59,-27],[-57,-28],
+      [-56,-29],[-55,-30],[-54,-32],[-53,-34],[-52,-36],[-50,-38],
+      [-48,-39],[-46,-39],[-44,-38],[-42,-38],[-40,-38],[-39,-40],
+      [-40,-42],[-42,-44],[-44,-45],[-46,-46],[-48,-47],[-50,-47],
+      [-52,-47],[-54,-46],[-56,-45],[-58,-43],[-60,-40],[-62,-38],
+      [-63,-35],[-65,-32],[-66,-30],[-67,-27],[-68,-24],[-68,-22]
+    ]
+  },
+  {
+    id: 9,
+    name: 'Kazakhstan',
+    nameCN: '哈萨克斯坦',
+    area: '2,724,900 km²',
+    rank: 9,
+    color: '#00bcd4',
+    cities: [
+      { name: 'Astana', nameCN: '阿斯塔纳', lat: 51.1694, lon: 71.4491, type: 'capital' },
+      { name: 'Almaty', nameCN: '阿拉木图', lat: 43.2220, lon: 76.8512, type: 'second' }
+    ],
+    polygon: [
+      [47,48],[50,50],[53,50],[56,50],[59,50],[62,49],[65,49],
+      [68,48],[71,47],[74,46],[76,45],[78,44],[80,43],[82,45],
+      [84,46],[86,47],[87,49],[86,51],[85,53],[83,54],[80,54],
+      [78,55],[75,54],[72,54],[68,53],[64,53],[60,52],[56,52],
+      [52,51],[49,50],[47,48]
+    ]
+  },
+  {
+    id: 10,
+    name: 'Algeria',
+    nameCN: '阿尔及利亚',
+    area: '2,381,741 km²',
+    rank: 10,
+    color: '#ff9800',
+    cities: [
+      { name: 'Algiers', nameCN: '阿尔及尔', lat: 36.7538, lon: 3.0588, type: 'capital' },
+      { name: 'Oran', nameCN: '奥兰', lat: 35.6969, lon: -0.6331, type: 'second' }
+    ],
+    polygon: [
+      [-8,35],[-6,37],[-4,36],[-2,36],[0,37],[2,37],[4,36],
+      [6,36],[8,35],[9,34],[10,32],[11,30],[10,28],[8,27],
+      [6,25],[5,23],[3,22],[0,21],[-2,21],[-4,22],[-6,23],
+      [-8,25],[-9,28],[-8,30],[-8,32],[-8,35]
+    ]
+  }
+];
+
+// ============================================================
+// 全局状态
+// ============================================================
+let hoveredCountryId = null;
+const RADIUS = 5;
+const HIGHLIGHT_RADIUS = 5.04;
+const ID_MAP_W = 2048;
+const ID_MAP_H = 1024;
+
+// ============================================================
+// 经纬度 → 3D 坐标
+// ============================================================
+function latLonToVec3(lat, lon, radius = RADIUS) {
+  const phi = THREE.MathUtils.degToRad(90 - lat);
+  const theta = THREE.MathUtils.degToRad(lon + 90); // +90 so 0° lon faces viewer
+  const x = -radius * Math.sin(phi) * Math.cos(theta);
+  const y = radius * Math.cos(phi);
+  const z = radius * Math.sin(phi) * Math.sin(theta);
+  return new THREE.Vector3(x, y, z);
+}
+
+// 经纬度 → 画布坐标（等距矩形投影）
+function latLonToCanvas(lat, lon) {
+  const x = ((lon + 180) / 360) * ID_MAP_W;
+  const y = ((90 - lat) / 180) * ID_MAP_H;
+  return { x, y };
+}
+
+// ============================================================
+// 构建国家ID识别图（离屏Canvas）
+// ============================================================
+function buildIdMap() {
+  const canvas = document.createElement('canvas');
+  canvas.width = ID_MAP_W;
+  canvas.height = ID_MAP_H;
+  const ctx = canvas.getContext('2d');
+
+  // 黑色背景（0 = 无国家）
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, ID_MAP_W, ID_MAP_H);
+
+  countries.forEach(country => {
+    const polygons = [country.polygon];
+    if (country.polygonEast) polygons.push(country.polygonEast);
+    if (country.polygonAlaska) polygons.push(country.polygonAlaska);
+
+    polygons.forEach(poly => {
+      if (!poly || poly.length < 3) return;
+      ctx.beginPath();
+      const first = latLonToCanvas(poly[0][1], poly[0][0]);
+      ctx.moveTo(first.x, first.y);
+      for (let i = 1; i < poly.length; i++) {
+        const p = latLonToCanvas(poly[i][1], poly[i][0]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.closePath();
+      // 用唯一颜色填充：R通道 = 国家ID
+      ctx.fillStyle = `rgb(${country.id}, 0, 0)`;
+      ctx.fill();
+    });
+  });
+
+  return { canvas, ctx };
+}
+
+const idMap = buildIdMap();
+
+// 通过UV坐标查找国家ID
+function getCountryIdFromUV(uv) {
+  const x = Math.floor(uv.x * ID_MAP_W);
+  const y = Math.floor((1 - uv.y) * ID_MAP_H);
+  if (x < 0 || x >= ID_MAP_W || y < 0 || y >= ID_MAP_H) return null;
+  const pixel = idMap.ctx.getImageData(x, y, 1, 1).data;
+  const id = pixel[0]; // R通道
+  return id > 0 && id <= 10 ? id : null;
+}
+
+// ============================================================
+// 构建高亮纹理（离屏Canvas）
+// ============================================================
+const highlightCanvas = document.createElement('canvas');
+highlightCanvas.width = ID_MAP_W;
+highlightCanvas.height = ID_MAP_H;
+const highlightCtx = highlightCanvas.getContext('2d');
+const highlightTexture = new THREE.CanvasTexture(highlightCanvas);
+highlightTexture.colorSpace = THREE.SRGBColorSpace;
+highlightTexture.wrapS = THREE.ClampToEdgeWrapping;
+highlightTexture.wrapT = THREE.ClampToEdgeWrapping;
+
+function updateHighlightTexture(countryId) {
+  highlightCtx.clearRect(0, 0, ID_MAP_W, ID_MAP_H);
+  if (countryId === null) {
+    highlightTexture.needsUpdate = true;
+    return;
+  }
+
+  const country = countries.find(c => c.id === countryId);
+  if (!country) {
+    highlightTexture.needsUpdate = true;
+    return;
+  }
+
+  const polygons = [country.polygon];
+  if (country.polygonEast) polygons.push(country.polygonEast);
+  if (country.polygonAlaska) polygons.push(country.polygonAlaska);
+
+  polygons.forEach(poly => {
+    if (!poly || poly.length < 3) return;
+    highlightCtx.beginPath();
+    const first = latLonToCanvas(poly[0][1], poly[0][0]);
+    highlightCtx.moveTo(first.x, first.y);
+    for (let i = 1; i < poly.length; i++) {
+      const p = latLonToCanvas(poly[i][1], poly[i][0]);
+      highlightCtx.lineTo(p.x, p.y);
+    }
+    highlightCtx.closePath();
+    highlightCtx.fillStyle = country.color + '66'; // 40% 透明度
+    highlightCtx.fill();
+    highlightCtx.strokeStyle = country.color;
+    highlightCtx.lineWidth = 2;
+    highlightCtx.stroke();
+  });
+
+  highlightTexture.needsUpdate = true;
+}
+
+// 初始状态：无高亮
+updateHighlightTexture(null);
+
+// ============================================================
+// Three.js 场景初始化
+// ============================================================
+const container = document.getElementById('globe-container');
+
+// 渲染器
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+// 场景 & 相机
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 100);
+camera.position.set(0, 1.5, 14);
+
+// OrbitControls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 7;
+controls.maxDistance = 30;
+controls.target.set(0, 0, 0);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.3;
+controls.update();
+
+// 光照
+const ambientLight = new THREE.AmbientLight(0x333355, 2.5);
+scene.add(ambientLight);
+const sunLight = new THREE.DirectionalLight(0xffffff, 4);
+sunLight.position.set(5, 3, 8);
+scene.add(sunLight);
+const fillLight = new THREE.DirectionalLight(0x4488cc, 1.2);
+fillLight.position.set(-5, -1, -3);
+scene.add(fillLight);
+
+// ============================================================
+// 星空背景
+// ============================================================
+const starsGeom = new THREE.BufferGeometry();
+const starsCount = 2000;
+const starsPositions = new Float32Array(starsCount * 3);
+for (let i = 0; i < starsCount; i++) {
+  const r = 40 + Math.random() * 20;
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  starsPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+  starsPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+  starsPositions[i * 3 + 2] = r * Math.cos(phi);
+}
+starsGeom.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
+const starsMat = new THREE.PointsMaterial({
+  color: 0xffffff,
+  size: 0.06,
+  transparent: true,
+  opacity: 0.8,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const stars = new THREE.Points(starsGeom, starsMat);
+scene.add(stars);
+
+// ============================================================
+// 地球
+// ============================================================
+const earthGeom = new THREE.SphereGeometry(RADIUS, 128, 64);
+
+// 地球纹理
+const textureLoader = new THREE.TextureLoader();
+const earthTexture = textureLoader.load(
+  'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg',
+  () => { /* loaded */ },
+  undefined,
+  () => {
+    // 加载失败回退：使用蓝色渐变
+    console.warn('Earth texture failed to load, using fallback');
+    const fallbackCanvas = document.createElement('canvas');
+    fallbackCanvas.width = 1024;
+    fallbackCanvas.height = 512;
+    const fctx = fallbackCanvas.getContext('2d');
+    const grad = fctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, '#1a5276');
+    grad.addColorStop(0.3, '#2e86c1');
+    grad.addColorStop(0.5, '#3498db');
+    grad.addColorStop(0.7, '#27ae60');
+    grad.addColorStop(1, '#1a5276');
+    fctx.fillStyle = grad;
+    fctx.fillRect(0, 0, 1024, 512);
+    earthTexture.image = fallbackCanvas;
+    earthTexture.needsUpdate = true;
+  }
+);
+earthTexture.colorSpace = THREE.SRGBColorSpace;
+const earthMat = new THREE.MeshStandardMaterial({
+  map: earthTexture,
+  roughness: 0.8,
+  metalness: 0.05,
+});
+const earth = new THREE.Mesh(earthGeom, earthMat);
+scene.add(earth);
+
+// 高亮球体（稍大于地球，用于显示国家高亮）
+const highlightGeom = new THREE.SphereGeometry(HIGHLIGHT_RADIUS, 128, 64);
+const highlightMat = new THREE.MeshBasicMaterial({
+  map: highlightTexture,
+  transparent: true,
+  opacity: 0.7,
+  depthTest: true,
+  depthWrite: false,
+  blending: THREE.NormalBlending,
+});
+const highlightSphere = new THREE.Mesh(highlightGeom, highlightMat);
+scene.add(highlightSphere);
+
+// 大气辉光
+const atmosphereGeom = new THREE.SphereGeometry(RADIUS + 0.15, 64, 32);
+const atmosphereMat = new THREE.ShaderMaterial({
+  vertexShader: /*glsl*/`
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    void main() {
+      vec4 worldPos = modelMatrix * vec4(position, 1.0);
+      vPosition = worldPos.xyz;
+      vNormal = normalize(mat3(modelMatrix) * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /*glsl*/`
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    void main() {
+      vec3 viewDir = normalize(cameraPosition - vPosition);
+      float fresnel = 1.0 - abs(dot(viewDir, vNormal));
+      fresnel = pow(fresnel, 3.5);
+      gl_FragColor = vec4(0.3, 0.6, 1.0, fresnel * 0.45);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+const atmosphere = new THREE.Mesh(atmosphereGeom, atmosphereMat);
+scene.add(atmosphere);
+
+// ============================================================
+// 城市标记点（3D小球）
+// ============================================================
+const cityMarkers = [];
+const markerGroup = new THREE.Group();
+scene.add(markerGroup);
+
+const capitalGeom = new THREE.SphereGeometry(0.04, 16, 12);
+const secondGeom = new THREE.SphereGeometry(0.035, 16, 12);
+
+countries.forEach(country => {
+  country.cities.forEach(city => {
+    const pos = latLonToVec3(city.lat, city.lon, RADIUS + 0.06);
+    const geom = city.type === 'capital' ? capitalGeom : secondGeom;
+    const color = city.type === 'capital' ? 0xffd740 : 0x80cbc4;
+    const mat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.85,
+      depthTest: true,
+      depthWrite: false,
+    });
+    const marker = new THREE.Mesh(geom, mat);
+    marker.position.copy(pos);
+    // 让标记点朝向球体外侧
+    marker.lookAt(pos.clone().multiplyScalar(2));
+    marker.userData = {
+      countryId: country.id,
+      cityType: city.type,
+      cityName: city.nameCN,
+      countryName: country.nameCN,
+      basePos: pos.clone(),
+      color,
+      defaultOpacity: 0.85,
+    };
+    markerGroup.add(marker);
+    cityMarkers.push(marker);
+  });
+});
+
+// ============================================================
+// 城市标签（HTML覆盖层）
+// ============================================================
+const labelContainer = document.createElement('div');
+labelContainer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:5;';
+container.appendChild(labelContainer);
+
+const cityLabels = [];
+countries.forEach(country => {
+  country.cities.forEach(city => {
+    const el = document.createElement('div');
+    el.className = 'city-label';
+    const dotClass = city.type === 'capital' ? 'capital' : 'second';
+    el.innerHTML = `<span class="dot-indicator ${dotClass}"></span>${city.nameCN}`;
+    labelContainer.appendChild(el);
+    cityLabels.push({
+      el,
+      pos3D: latLonToVec3(city.lat, city.lon, RADIUS + 0.12),
+      countryId: country.id,
+      cityType: city.type,
+    });
+  });
+});
+
+// ============================================================
+// 图例
+// ============================================================
+const legendEl = document.getElementById('legend');
+countries.forEach(c => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.innerHTML = `
+    <span class="legend-rank">#${c.rank}</span>
+    <span class="legend-dot" style="background:${c.color};box-shadow:0 0 8px ${c.color}"></span>
+    <span>${c.nameCN}</span>
+  `;
+  item.addEventListener('click', () => {
+    flyToCountry(c.id);
+  });
+  legendEl.appendChild(item);
+});
+
+// ============================================================
+// 提示框
+// ============================================================
+const tooltipEl = document.getElementById('tooltip');
+
+// ============================================================
+// 射线检测
+// ============================================================
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function getIntersection(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  return raycaster.intersectObject(earth, false);
+}
+
+function handleMouseMove(event) {
+  const intersects = getIntersection(event);
+  if (intersects.length > 0) {
+    const uv = intersects[0].uv;
+    const countryId = getCountryIdFromUV(uv);
+
+    if (countryId !== hoveredCountryId) {
+      hoveredCountryId = countryId;
+      updateHighlightTexture(countryId);
+      updateMarkerHighlight(countryId);
+      updateLabelHighlight(countryId);
+    }
+
+    if (countryId) {
+      const country = countries.find(c => c.id === countryId);
+      updateTooltip(event, country);
+      document.body.classList.add('pointing');
+    } else {
+      hideTooltip();
+      document.body.classList.remove('pointing');
+    }
+  } else {
+    if (hoveredCountryId !== null) {
+      hoveredCountryId = null;
+      updateHighlightTexture(null);
+      updateMarkerHighlight(null);
+      updateLabelHighlight(null);
+      hideTooltip();
+      document.body.classList.remove('pointing');
+    }
+  }
+}
+
+function updateMarkerHighlight(countryId) {
+  cityMarkers.forEach(m => {
+    const isTarget = countryId !== null && m.userData.countryId === countryId;
+    m.material.opacity = isTarget ? 1 : 0.4;
+    m.scale.setScalar(isTarget ? 1.8 : 1);
+    if (isTarget) {
+      m.material.color.set(m.userData.color);
+    }
+  });
+}
+
+function updateLabelHighlight(countryId) {
+  cityLabels.forEach(l => {
+    const isTarget = countryId !== null && l.countryId === countryId;
+    if (isTarget) {
+      l.el.classList.add('highlighted');
+    } else {
+      l.el.classList.remove('highlighted');
+    }
+  });
+}
+
+function updateTooltip(event, country) {
+  tooltipEl.innerHTML = `
+    <div class="country-name">${country.nameCN} <span style="font-weight:400;font-size:0.8rem;color:#888;">${country.name}</span></div>
+    <div class="area">面积: ${country.area} · 排名第 ${country.rank}</div>
+    ${country.cities.map(c => `
+      <div class="city-row">
+        <span class="city-dot ${c.type}"></span>
+        ${c.type === 'capital' ? '🏛 首都' : '🏙 第二大城市'}: ${c.nameCN} (${c.name})
+      </div>
+    `).join('')}
+  `;
+  tooltipEl.classList.add('visible');
+  // 定位在鼠标右下方
+  const offsetX = 20;
+  const offsetY = 20;
+  let left = event.clientX + offsetX;
+  let top = event.clientY + offsetY;
+  if (left + 220 > window.innerWidth) left = event.clientX - 230;
+  if (top + 120 > window.innerHeight) top = event.clientY - 130;
+  tooltipEl.style.left = left + 'px';
+  tooltipEl.style.top = top + 'px';
+}
+
+function hideTooltip() {
+  tooltipEl.classList.remove('visible');
+}
+
+// ============================================================
+// 飞到指定国家
+// ============================================================
+function flyToCountry(countryId) {
+  const country = countries.find(c => c.id === countryId);
+  if (!country) return;
+
+  // 计算国家中心点
+  const poly = country.polygon;
+  let sumLat = 0, sumLon = 0;
+  poly.forEach(([lon, lat]) => {
+    sumLat += lat;
+    sumLon += lon;
+  });
+  const centerLat = sumLat / poly.length;
+  const centerLon = sumLon / poly.length;
+
+  const target = latLonToVec3(centerLat, centerLon, 0);
+  const cameraTarget = latLonToVec3(centerLat, centerLon, RADIUS * 2.2);
+
+  // 动画
+  const startTarget = controls.target.clone();
+  const startCamera = camera.position.clone();
+  const startTime = performance.now();
+  const duration = 1200;
+
+  function animateFly(time) {
+    const elapsed = time - startTime;
+    const t = Math.min(elapsed / duration, 1.0);
+    // easeInOutCubic
+    const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+    controls.target.lerpVectors(startTarget, target, ease);
+    camera.position.lerpVectors(startCamera, cameraTarget, ease);
+
+    if (t < 1) {
+      requestAnimationFrame(animateFly);
+    }
+  }
+  requestAnimationFrame(animateFly);
+}
+
+// ============================================================
+// 更新城市标签屏幕位置
+// ============================================================
+function updateCityLabels() {
+  const halfW = window.innerWidth / 2;
+  const halfH = window.innerHeight / 2;
+
+  cityLabels.forEach(label => {
+    const pos = label.pos3D.clone();
+    // 检查是否面向相机
+    const normal = pos.clone().normalize();
+    const cameraDir = camera.position.clone().normalize();
+    const dot = normal.dot(cameraDir);
+
+    if (dot < 0.05) {
+      // 在地球背面，隐藏
+      label.el.style.opacity = '0';
+      return;
+    }
+
+    pos.project(camera);
+    const x = (pos.x * halfW) + halfW;
+    const y = -(pos.y * halfH) + halfH;
+
+    if (pos.z > 1) {
+      label.el.style.opacity = '0';
+      return;
+    }
+
+    label.el.style.left = x + 'px';
+    label.el.style.top = y + 'px';
+
+    // 基础透明度由highlight类控制，这里只处理背面隐藏
+    if (label.el.style.opacity === '0') {
+      label.el.style.opacity = '';
+    }
+  });
+}
+
+// ============================================================
+// 动画循环
+// ============================================================
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  updateCityLabels();
+
+  // 星空缓慢旋转
+  stars.rotation.y += 0.0001;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// ============================================================
+// 事件监听
+// ============================================================
+window.addEventListener('mousemove', handleMouseMove, { passive: true });
+window.addEventListener('mouseleave', () => {
+  if (hoveredCountryId !== null) {
+    hoveredCountryId = null;
+    updateHighlightTexture(null);
+    updateMarkerHighlight(null);
+    updateLabelHighlight(null);
+    hideTooltip();
+    document.body.classList.remove('pointing');
+  }
+});
+
+// 触摸事件（移动端）
+window.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 1) {
+    handleMouseMove(e.touches[0]);
+  }
+}, { passive: true });
+window.addEventListener('touchend', () => {
+  if (hoveredCountryId !== null) {
+    hoveredCountryId = null;
+    updateHighlightTexture(null);
+    updateMarkerHighlight(null);
+    updateLabelHighlight(null);
+    hideTooltip();
+    document.body.classList.remove('pointing');
+  }
+});
+
+// 窗口大小调整
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// 键盘快捷键
+window.addEventListener('keydown', (e) => {
+  // 数字键 1-0 快速跳转到对应国家
+  if (e.key >= '1' && e.key <= '9') {
+    flyToCountry(parseInt(e.key));
+  } else if (e.key === '0') {
+    flyToCountry(10);
+  } else if (e.key === 'r' || e.key === 'R') {
+    // R键重置视角
+    const startTarget = controls.target.clone();
+    const startCamera = camera.position.clone();
+    const endTarget = new THREE.Vector3(0, 0, 0);
+    const endCamera = new THREE.Vector3(0, 1.5, 14);
+    const startTime = performance.now();
+    const duration = 800;
+    function animReset(time) {
+      const elapsed = time - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      controls.target.lerpVectors(startTarget, endTarget, ease);
+      camera.position.lerpVectors(startCamera, endCamera, ease);
+      if (t < 1) requestAnimationFrame(animReset);
+    }
+    requestAnimationFrame(animReset);
+  }
+});
+
+console.log('🌍 地球仪已就绪！');
+console.log('  🖱 鼠标悬停国家 → 高亮显示');
+console.log('  🖱 点击底部图例 → 飞向该国');
+console.log('  ⌨ 按数字键 1-0 → 快速跳转到对应国家');
+console.log('  ⌨ 按 R 键 → 重置视角');
+console.log('  🟡 金色点 = 首都  |  🔵 青色点 = 第二大城市');
+</script>
+</body>
+</html>

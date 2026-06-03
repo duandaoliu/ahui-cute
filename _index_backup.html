@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todo 清单</title>
+<style>
+/* ===== CSS Variables ===== */
+:root {
+  --bg: #f0f2f5;
+  --card-bg: #ffffff;
+  --text: #1a1a2e;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 25px -3px rgba(0,0,0,0.08), 0 4px 10px -4px rgba(0,0,0,0.05);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== App Container ===== */
+.app {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ===== Header ===== */
+.header {
+  text-align: center;
+  padding: 8px 0;
+}
+.header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header .date {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* ===== Add Form ===== */
+.add-form {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.add-form .row {
+  display: flex;
+  gap: 10px;
+}
+.add-form input[type="text"] {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.add-form input[type="text"]:focus {
+  border-color: var(--primary);
+}
+.add-form .row-options {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.add-form select,
+.add-form input[type="date"] {
+  padding: 10px 12px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  outline: none;
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--transition);
+  flex: 1;
+}
+.add-form select:focus,
+.add-form input[type="date"]:focus {
+  border-color: var(--primary);
+}
+.add-form button {
+  padding: 10px 20px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), transform 0.1s;
+  white-space: nowrap;
+  min-width: 56px;
+}
+.add-form button:hover { background: var(--primary-hover); }
+.add-form button:active { transform: scale(0.97); }
+
+/* ===== Toolbar ===== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ===== Filters ===== */
+.filters {
+  display: flex;
+  gap: 4px;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 4px;
+  box-shadow: var(--shadow-sm);
+}
+.filters button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.filters button.active {
+  background: var(--primary);
+  color: #fff;
+}
+.filters button:hover:not(.active) {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--text);
+}
+
+/* Counter & clear */
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.meta .count strong { color: var(--text); }
+.meta .clear-btn {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.meta .clear-btn:hover { color: var(--danger-hover); }
+
+/* ===== Todo List ===== */
+.todo-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-secondary);
+}
+.empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+.empty-state p { font-size: 0.95rem; }
+
+/* ===== Todo Item ===== */
+.todo-item {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all var(--transition);
+  animation: slideIn 0.3s ease;
+  border-left: 4px solid transparent;
+  position: relative;
+}
+.todo-item:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.todo-item.priority-high   { border-left-color: var(--danger); }
+.todo-item.priority-medium { border-left-color: var(--warning); }
+.todo-item.priority-low    { border-left-color: var(--success); }
+
+.todo-item.completed .todo-text {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+.todo-item.removing {
+  animation: slideOut 0.25s ease forwards;
+}
+
+/* Checkbox */
+.checkbox-wrap {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+}
+.checkbox-wrap input { display: none; }
+.checkbox-wrap label {
+  width: 22px; height: 22px;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.checkbox-wrap input:checked + label {
+  background: var(--success);
+  border-color: var(--success);
+}
+.checkbox-wrap input:checked + label::after {
+  content: '✓';
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.checkbox-wrap label:hover {
+  border-color: var(--success);
+}
+
+/* Text */
+.todo-text {
+  flex: 1;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+/* Edit input */
+.todo-edit-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid var(--primary);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+  font-family: inherit;
+}
+
+/* Meta tags */
+.todo-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.priority-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.priority-badge.high   { background: #fef2f2; color: var(--danger); }
+.priority-badge.medium { background: #fffbeb; color: #d97706; }
+.priority-badge.low    { background: #ecfdf5; color: #059669; }
+
+.due-badge {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.due-badge.overdue   { background: #fef2f2; color: var(--danger); }
+.due-badge.today     { background: #fff7ed; color: #ea580c; }
+.due-badge.upcoming  { background: #f0f9ff; color: #0284c7; }
+
+/* Action buttons */
+.todo-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.todo-actions button {
+  width: 32px; height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all var(--transition);
+  color: var(--text-secondary);
+}
+.todo-actions button:hover {
+  background: #f3f4f6;
+  color: var(--text);
+}
+.todo-actions button.delete-btn:hover {
+  background: #fef2f2;
+  color: var(--danger);
+}
+.todo-actions button.edit-btn:hover {
+  background: #eef2ff;
+  color: var(--primary);
+}
+
+/* ===== Animations ===== */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(60px); }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 500px) {
+  body { padding: 20px 10px; }
+  .header h1 { font-size: 1.6rem; }
+  .add-form { padding: 14px; gap: 10px; }
+  .add-form .row-options { flex-direction: column; }
+  .add-form select,
+  .add-form input[type="date"] { width: 100%; }
+  .todo-item { padding: 14px 16px; gap: 10px; }
+  .todo-tags { flex-direction: column; align-items: flex-end; gap: 4px; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .filters { justify-content: center; }
+  .meta { justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Header -->
+  <header class="header">
+    <h1>📋 Todo 清单</h1>
+    <p class="date" id="todayDate"></p>
+  </header>
+
+  <!-- Add Form -->
+  <form class="add-form" id="addForm">
+    <div class="row">
+      <input type="text" id="todoInput" placeholder="添加新任务…" maxlength="200" autocomplete="off">
+      <button type="submit" title="添加 (Enter)">＋</button>
+    </div>
+    <div class="row-options">
+      <select id="prioritySelect">
+        <option value="medium">🟡 中优先级</option>
+        <option value="high">🔴 高优先级</option>
+        <option value="low">🟢 低优先级</option>
+      </select>
+      <input type="date" id="dueDateInput">
+      <button type="button" id="clearDueBtn" title="清除日期" style="background:#f3f4f6;color:var(--text-secondary);font-size:0.8rem;">✕</button>
+    </div>
+  </form>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="filters">
+      <button class="active" data-filter="all">全部</button>
+      <button data-filter="active">进行中</button>
+      <button data-filter="completed">已完成</button>
+    </div>
+    <div class="meta">
+      <span class="count"><strong id="countNum">0</strong> 项剩余</span>
+      <button class="clear-btn" id="clearCompleted">清除已完成</button>
+    </div>
+  </div>
+
+  <!-- Todo List -->
+  <ul class="todo-list" id="todoList"></ul>
+</div>
+
+<script>
+// ===== State =====
+const STORAGE_KEY = 'todo_app_data';
+let todos = [];
+let currentFilter = 'all';
+let editingId = null;
+
+// ===== Load / Save =====
+function loadTodos() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    todos = raw ? JSON.parse(raw) : [];
+  } catch {
+    todos = [];
+  }
+}
+
+function saveTodos() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+}
+
+// ===== Helpers =====
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' });
+}
+
+function getDueStatus(dateStr) {
+  if (!dateStr) return '';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dateStr + 'T00:00:00');
+  const diff = due - today;
+  const days = diff / (1000 * 60 * 60 * 24);
+  if (days < 0) return 'overdue';
+  if (days === 0) return 'today';
+  return 'upcoming';
+}
+
+function getDueLabel(dateStr) {
+  if (!dateStr) return '';
+  const status = getDueStatus(dateStr);
+  const d = new Date(dateStr + 'T00:00:00');
+  const fmt = d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+  if (status === 'overdue') return `⚠ 过期 ${fmt}`;
+  if (status === 'today') return `📅 今天`;
+  return `📅 ${fmt}`;
+}
+
+// ===== Render =====
+function getFilteredTodos() {
+  if (currentFilter === 'active')    return todos.filter(t => !t.completed);
+  if (currentFilter === 'completed') return todos.filter(t => t.completed);
+  return todos;
+}
+
+function render() {
+  const list = document.getElementById('todoList');
+  const filtered = getFilteredTodos();
+  const activeCount = todos.filter(t => !t.completed).length;
+  document.getElementById('countNum').textContent = activeCount;
+
+  if (filtered.length === 0) {
+    const emptyMsgs = {
+      all:       { icon: '📝', text: '还没有任务，添加一个吧！' },
+      active:    { icon: '🎉', text: '所有任务都完成了！' },
+      completed: { icon: '📋', text: '还没有已完成的任务' },
+    };
+    const msg = emptyMsgs[currentFilter];
+    list.innerHTML = `<li class="empty-state"><div class="icon">${msg.icon}</div><p>${msg.text}</p></li>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(t => {
+    const completedClass = t.completed ? 'completed' : '';
+    const priorityClass = `priority-${t.priority}`;
+    const isEditing = editingId === t.id;
+
+    const priorityLabels = { high: '高', medium: '中', low: '低' };
+    const priorityBadge = `<span class="priority-badge ${t.priority}">${priorityLabels[t.priority]}</span>`;
+
+    const dueStatus = getDueStatus(t.dueDate);
+    const dueBadge = t.dueDate
+      ? `<span class="due-badge ${dueStatus}">${getDueLabel(t.dueDate)}</span>`
+      : '';
+
+    const textHtml = isEditing
+      ? `<input class="todo-edit-input" value="${escapeHtml(t.text)}" data-id="${t.id}" maxlength="200">`
+      : `<span class="todo-text" data-id="${t.id}" title="双击编辑">${escapeHtml(t.text)}</span>`;
+
+    return `
+      <li class="todo-item ${completedClass} ${priorityClass}" data-id="${t.id}">
+        <div class="checkbox-wrap">
+          <input type="checkbox" id="chk-${t.id}" ${t.completed ? 'checked' : ''} data-id="${t.id}">
+          <label for="chk-${t.id}"></label>
+        </div>
+        ${textHtml}
+        <div class="todo-tags">
+          ${dueBadge}
+          ${priorityBadge}
+        </div>
+        <div class="todo-actions">
+          <button class="edit-btn" data-id="${t.id}" title="编辑">✎</button>
+          <button class="delete-btn" data-id="${t.id}" title="删除">✕</button>
+        </div>
+      </li>`;
+  }).join('');
+
+  // Focus edit input if editing
+  if (editingId) {
+    const input = document.querySelector(`.todo-edit-input[data-id="${editingId}"]`);
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ===== Actions =====
+function addTodo(text, priority, dueDate) {
+  if (!text.trim()) return;
+  todos.unshift({
+    id: genId(),
+    text: text.trim(),
+    completed: false,
+    priority: priority || 'medium',
+    dueDate: dueDate || '',
+    createdAt: Date.now(),
+  });
+  saveTodos();
+  render();
+}
+
+function toggleTodo(id) {
+  const todo = todos.find(t => t.id === id);
+  if (todo) {
+    todo.completed = !todo.completed;
+    saveTodos();
+    render();
+  }
+}
+
+function deleteTodo(id) {
+  const el = document.querySelector(`.todo-item[data-id="${id}"]`);
+  if (el) {
+    el.classList.add('removing');
+    el.addEventListener('animationend', () => {
+      todos = todos.filter(t => t.id !== id);
+      saveTodos();
+      render();
+    }, { once: true });
+  } else {
+    todos = todos.filter(t => t.id !== id);
+    saveTodos();
+    render();
+  }
+}
+
+function startEdit(id) {
+  editingId = id;
+  render();
+}
+
+function commitEdit(id, newText) {
+  const todo = todos.find(t => t.id === id);
+  if (todo && newText.trim()) {
+    todo.text = newText.trim();
+    saveTodos();
+  }
+  editingId = null;
+  render();
+}
+
+function cancelEdit() {
+  editingId = null;
+  render();
+}
+
+function clearCompleted() {
+  const hadCompleted = todos.some(t => t.completed);
+  if (!hadCompleted) return;
+  todos = todos.filter(t => !t.completed);
+  saveTodos();
+  render();
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.filters button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  render();
+}
+
+// ===== Event Delegation =====
+document.getElementById('todoList').addEventListener('click', e => {
+  const target = e.target;
+
+  // Checkbox toggle
+  if (target.tagName === 'INPUT' && target.type === 'checkbox') {
+    toggleTodo(target.dataset.id);
+    return;
+  }
+
+  // Delete button
+  if (target.closest('.delete-btn')) {
+    const id = target.closest('.delete-btn').dataset.id;
+    deleteTodo(id);
+    return;
+  }
+
+  // Edit button
+  if (target.closest('.edit-btn')) {
+    const id = target.closest('.edit-btn').dataset.id;
+    startEdit(id);
+    return;
+  }
+});
+
+// Double-click to edit
+document.getElementById('todoList').addEventListener('dblclick', e => {
+  const textSpan = e.target.closest('.todo-text');
+  if (textSpan) {
+    startEdit(textSpan.dataset.id);
+  }
+});
+
+// Edit input: Enter to save, Escape to cancel
+document.getElementById('todoList').addEventListener('keydown', e => {
+  if (e.target.classList.contains('todo-edit-input')) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit(e.target.dataset.id, e.target.value);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+  }
+});
+
+// Edit input: blur to save
+document.getElementById('todoList').addEventListener('blur', e => {
+  if (e.target.classList.contains('todo-edit-input')) {
+    commitEdit(e.target.dataset.id, e.target.value);
+  }
+}, true);
+
+// Add form submit
+document.getElementById('addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const input = document.getElementById('todoInput');
+  const priority = document.getElementById('prioritySelect').value;
+  const dueDate = document.getElementById('dueDateInput').value;
+  addTodo(input.value, priority, dueDate);
+  input.value = '';
+  document.getElementById('dueDateInput').value = '';
+  input.focus();
+});
+
+// Clear due date
+document.getElementById('clearDueBtn').addEventListener('click', () => {
+  document.getElementById('dueDateInput').value = '';
+});
+
+// Filter buttons
+document.querySelector('.filters').addEventListener('click', e => {
+  if (e.target.tagName === 'BUTTON') {
+    setFilter(e.target.dataset.filter);
+  }
+});
+
+// Clear completed
+document.getElementById('clearCompleted').addEventListener('click', clearCompleted);
+
+// ===== Keyboard Shortcuts =====
+document.addEventListener('keydown', e => {
+  // Ctrl/Cmd + K to focus input
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('todoInput').focus();
+  }
+});
+
+// ===== Init =====
+function init() {
+  // Set today's date
+  const now = new Date();
+  document.getElementById('todayDate').textContent = now.toLocaleDateString('zh-CN', {
+    year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
+  });
+
+  loadTodos();
+  render();
+  document.getElementById('todoInput').focus();
+}
+
+init();
+</script>
+</body>
+</html>

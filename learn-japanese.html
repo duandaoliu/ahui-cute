@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日本語学習 - Japanese Learning</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #1a1a2e;
+  --card: #16213e;
+  --primary: #e94560;
+  --gold: #f0c040;
+  --text: #eee;
+  --text-dim: #999;
+  --accent: #0f3460;
+  --correct: #4caf84;
+  --wrong: #e94560;
+}
+
+body {
+  font-family: 'Segoe UI', 'Noto Sans SC', 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* Header */
+header {
+  background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+  border-bottom: 2px solid var(--primary);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+header h1 {
+  font-size: 1.6rem;
+  background: linear-gradient(90deg, var(--primary), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+nav { display: flex; gap: 4px; flex-wrap: wrap; }
+nav button {
+  background: var(--accent);
+  color: var(--text);
+  border: 1px solid transparent;
+  padding: 8px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+nav button:hover { border-color: var(--primary); }
+nav button.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Main */
+main { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
+
+.section { display: none; }
+.section.visible { display: block; }
+
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 1.4rem;
+  color: var(--gold);
+}
+
+/* Kana Grid */
+.kana-selector { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
+.kana-selector button {
+  background: var(--accent);
+  color: var(--text);
+  border: none;
+  padding: 8px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.kana-selector button.active { background: var(--primary); }
+
+.kana-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.kana-cell {
+  background: var(--card);
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 14px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.kana-cell:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(233,69,96,0.25);
+}
+.kana-cell .jp {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fff;
+  display: block;
+}
+.kana-cell .romaji {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.kana-cell.empty { background: transparent; border-color: transparent; cursor: default; }
+.kana-cell.empty:hover { transform: none; box-shadow: none; }
+
+/* Flashcard */
+.flashcard-container {
+  perspective: 1000px;
+  max-width: 400px;
+  margin: 0 auto 24px;
+}
+.flashcard {
+  width: 100%;
+  aspect-ratio: 1.6;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.5s;
+  cursor: pointer;
+}
+.flashcard.flipped { transform: rotateY(180deg); }
+.flashcard-front, .flashcard-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  font-weight: bold;
+}
+.flashcard-front {
+  background: var(--card);
+  border: 2px solid var(--accent);
+  color: #fff;
+}
+.flashcard-back {
+  background: var(--accent);
+  border: 2px solid var(--gold);
+  transform: rotateY(180deg);
+  color: var(--gold);
+}
+.flashcard-back .meaning { font-size: 1.2rem; color: #ccc; margin-top: 8px; }
+.flashcard-back .reading { font-size: 1rem; color: var(--text-dim); }
+
+.flashcard-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.flashcard-controls button {
+  background: var(--accent);
+  color: var(--text);
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+.flashcard-controls button:hover { background: #1a4a7a; }
+.flashcard-controls button.primary { background: var(--primary); }
+
+.voice-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.voice-selector select {
+  background: var(--accent);
+  color: var(--text);
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+/* Quiz */
+.quiz-card {
+  background: var(--card);
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.quiz-card .question { font-size: 3.5rem; font-weight: bold; margin: 16px 0; }
+.quiz-card .prompt { color: var(--text-dim); font-size: 0.95rem; }
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+}
+.options button {
+  background: var(--accent);
+  color: var(--text);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.options button:hover { border-color: var(--primary); }
+.options button.correct { background: var(--correct); border-color: var(--correct); color: #fff; }
+.options button.wrong { background: var(--wrong); border-color: var(--wrong); color: #fff; }
+
+.quiz-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 16px;
+  font-size: 1rem;
+  color: var(--text-dim);
+}
+.quiz-stats span { font-weight: bold; color: var(--gold); }
+.quiz-mode-selector { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.quiz-mode-selector button {
+  background: var(--accent);
+  color: var(--text);
+  border: none;
+  padding: 6px 16px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.quiz-mode-selector button.active { background: var(--primary); }
+
+/* Progress */
+.progress-bar {
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--primary);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 99;
+}
+.toast.show { opacity: 1; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .kana-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .kana-cell { padding: 10px 4px; }
+  .kana-cell .jp { font-size: 1.4rem; }
+  .options { grid-template-columns: 1fr; }
+  nav button { padding: 6px 12px; font-size: 0.85rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>日本語学習</h1>
+  <nav>
+    <button onclick="switchSection('kana')" class="active" data-nav="kana">五十音</button>
+    <button onclick="switchSection('flashcards')" data-nav="flashcards">单词卡</button>
+    <button onclick="switchSection('quiz')" data-nav="quiz">测验</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ===== 五十音 ===== -->
+  <section id="kana-section" class="section visible">
+    <h2>五十音图</h2>
+    <div class="kana-selector">
+      <button onclick="showKana('hiragana')" class="active" data-kana="hiragana">平仮名</button>
+      <button onclick="showKana('katakana')" data-kana="katakana">片仮名</button>
+    </div>
+    <div class="kana-grid" id="kana-grid"></div>
+  </section>
+
+  <!-- ===== 单词卡 ===== -->
+  <section id="flashcards-section" class="section">
+    <h2>单词闪卡</h2>
+    <div class="voice-selector">
+      发音语速:
+      <select id="voice-rate" onchange="updateSpeechRate()">
+        <option value="0.7">慢速</option>
+        <option value="0.85" selected>正常</option>
+        <option value="1.0">快速</option>
+      </select>
+    </div>
+    <div class="progress-bar"><div class="progress-bar-fill" id="flashcard-progress" style="width:0%"></div></div>
+    <div class="flashcard-container">
+      <div class="flashcard" id="flashcard" onclick="flipCard()">
+        <div class="flashcard-front" id="flashcard-front">こんにちは</div>
+        <div class="flashcard-back">
+          <span id="flashcard-meaning">你好</span>
+          <span class="reading" id="flashcard-reading">konnichiwa</span>
+          <span class="meaning" id="flashcard-type"></span>
+        </div>
+      </div>
+    </div>
+    <div class="flashcard-controls">
+      <button onclick="prevCard()">⬅ 上一个</button>
+      <button class="primary" onclick="speakCard()">🔊 发音</button>
+      <button onclick="speakCardSlow()">🐢 慢读</button>
+      <button onclick="nextCard()">下一个 ➡</button>
+    </div>
+  </section>
+
+  <!-- ===== 测验 ===== -->
+  <section id="quiz-section" class="section">
+    <h2>知识测验</h2>
+    <div class="quiz-mode-selector">
+      <button onclick="setQuizMode('kana-to-romaji')" class="active" data-qmode="kana-to-romaji">假名→罗马字</button>
+      <button onclick="setQuizMode('romaji-to-kana')" data-qmode="romaji-to-kana">罗马字→假名</button>
+      <button onclick="setQuizMode('jp-to-zh')" data-qmode="jp-to-zh">日语→中文</button>
+    </div>
+    <div class="quiz-card">
+      <div class="prompt" id="quiz-prompt">选择正确的罗马字读音</div>
+      <div class="question" id="quiz-question">あ</div>
+      <button class="primary" style="margin-top:8px" onclick="speakQuiz()">🔊 听发音</button>
+      <div class="options" id="quiz-options"></div>
+    </div>
+    <div class="quiz-stats">
+      正确: <span id="quiz-correct">0</span>
+      错误: <span id="quiz-wrong">0</span>
+      进度: <span id="quiz-progress">0/0</span>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<footer>使用浏览器 Web Speech API 发音 | 建议使用 Chrome / Edge</footer>
+
+<script>
+// ======================== DATA ========================
+
+const hiragana = [
+  ['あ','a','い','i','う','u','え','e','お','o'],
+  ['か','ka','き','ki','く','ku','け','ke','こ','ko'],
+  ['さ','sa','し','shi','す','su','せ','se','そ','so'],
+  ['た','ta','ち','chi','つ','tsu','て','te','と','to'],
+  ['な','na','に','ni','ぬ','nu','ね','ne','の','no'],
+  ['は','ha','ひ','hi','ふ','fu','へ','he','ほ','ho'],
+  ['ま','ma','み','mi','む','mu','め','me','も','mo'],
+  ['や','ya','','','ゆ','yu','','','よ','yo'],
+  ['ら','ra','り','ri','る','ru','れ','re','ろ','ro'],
+  ['わ','wa','','','','','','','を','wo'],
+  ['ん','n','','','','','','','',''],
+];
+
+const katakana = [
+  ['ア','a','イ','i','ウ','u','エ','e','オ','o'],
+  ['カ','ka','キ','ki','ク','ku','ケ','ke','コ','ko'],
+  ['サ','sa','シ','shi','ス','su','セ','se','ソ','so'],
+  ['タ','ta','チ','chi','ツ','tsu','テ','te','ト','to'],
+  ['ナ','na','ニ','ni','ヌ','nu','ネ','ne','ノ','no'],
+  ['ハ','ha','ヒ','hi','フ','fu','ヘ','he','ホ','ho'],
+  ['マ','ma','ミ','mi','ム','mu','メ','me','モ','mo'],
+  ['ヤ','ya','','','ユ','yu','','','ヨ','yo'],
+  ['ラ','ra','リ','ri','ル','ru','レ','re','ロ','ro'],
+  ['ワ','wa','','','','','','','ヲ','wo'],
+  ['ン','n','','','','','','','',''],
+];
+
+const vocabulary = [
+  { jp:'こんにちは', reading:'konnichiwa', meaning:'你好', type:'问候' },
+  { jp:'おはよう', reading:'ohayou', meaning:'早上好', type:'问候' },
+  { jp:'こんばんは', reading:'konbanwa', meaning:'晚上好', type:'问候' },
+  { jp:'さようなら', reading:'sayounara', meaning:'再见', type:'问候' },
+  { jp:'ありがとう', reading:'arigatou', meaning:'谢谢', type:'礼貌' },
+  { jp:'すみません', reading:'sumimasen', meaning:'对不起/不好意思', type:'礼貌' },
+  { jp:'ごめんなさい', reading:'gomennasai', meaning:'对不起', type:'礼貌' },
+  { jp:'はい', reading:'hai', meaning:'是/好的', type:'基础' },
+  { jp:'いいえ', reading:'iie', meaning:'不/不是', type:'基础' },
+  { jp:'わたし', reading:'watashi', meaning:'我', type:'代词' },
+  { jp:'あなた', reading:'anata', meaning:'你', type:'代词' },
+  { jp:'ねこ', reading:'neko', meaning:'猫', type:'动物' },
+  { jp:'いぬ', reading:'inu', meaning:'狗', type:'动物' },
+  { jp:'たべる', reading:'taberu', meaning:'吃', type:'动词' },
+  { jp:'のむ', reading:'nomu', meaning:'喝', type:'动词' },
+  { jp:'みる', reading:'miru', meaning:'看', type:'动词' },
+  { jp:'いく', reading:'iku', meaning:'去', type:'动词' },
+  { jp:'くる', reading:'kuru', meaning:'来', type:'动词' },
+  { jp:'する', reading:'suru', meaning:'做', type:'动词' },
+  { jp:'おいしい', reading:'oishii', meaning:'好吃的', type:'形容词' },
+  { jp:'たかい', reading:'takai', meaning:'高的/贵的', type:'形容词' },
+  { jp:'やすい', reading:'yasui', meaning:'便宜的', type:'形容词' },
+  { jp:'おおきい', reading:'ookii', meaning:'大的', type:'形容词' },
+  { jp:'ちいさい', reading:'chiisai', meaning:'小的', type:'形容词' },
+  { jp:'がっこう', reading:'gakkou', meaning:'学校', type:'场所' },
+  { jp:'えき', reading:'eki', meaning:'车站', type:'场所' },
+  { jp:'みず', reading:'mizu', meaning:'水', type:'物品' },
+  { jp:'おかね', reading:'okane', meaning:'钱', type:'物品' },
+  { jp:'ほん', reading:'hon', meaning:'书', type:'物品' },
+  { jp:'にほん', reading:'nihon', meaning:'日本', type:'国家' },
+  { jp:'ちゅうごく', reading:'chuugoku', meaning:'中国', type:'国家' },
+  { jp:'いち', reading:'ichi', meaning:'一', type:'数字' },
+  { jp:'に', reading:'ni', meaning:'二', type:'数字' },
+  { jp:'さん', reading:'san', meaning:'三', type:'数字' },
+  { jp:'かわいい', reading:'kawaii', meaning:'可爱的', type:'形容词' },
+  { jp:'すごい', reading:'sugoi', meaning:'厉害的', type:'形容词' },
+  { jp:'だいじょうぶ', reading:'daijoubu', meaning:'没关系/没问题', type:'常用' },
+  { jp:'おねがいします', reading:'onegaishimasu', meaning:'拜托了/请', type:'礼貌' },
+  { jp:'いただきます', reading:'itadakimasu', meaning:'我开动了', type:'礼貌' },
+  { jp:'もしもし', reading:'moshi moshi', meaning:'喂(电话)', type:'常用' },
+];
+
+// Flatten kana for quiz
+function flattenKana(kanaSet) {
+  const result = [];
+  for (const row of kanaSet) {
+    for (let i = 0; i < row.length; i += 2) {
+      if (row[i] && row[i+1]) result.push({ kana: row[i], romaji: row[i+1] });
+    }
+  }
+  return result;
+}
+
+// ======================== NAVIGATION ========================
+
+function switchSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+  document.getElementById(name + '-section').classList.add('visible');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-nav="${name}"]`).classList.add('active');
+  if (name === 'quiz') generateQuiz();
+}
+
+// ======================== KANA GRID ========================
+
+let currentKana = 'hiragana';
+
+function showKana(type) {
+  currentKana = type;
+  document.querySelectorAll('.kana-selector button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-kana="${type}"]`).classList.add('active');
+  renderKanaGrid();
+}
+
+function renderKanaGrid() {
+  const grid = document.getElementById('kana-grid');
+  const data = currentKana === 'hiragana' ? hiragana : katakana;
+  let html = '';
+  for (const row of data) {
+    for (let i = 0; i < row.length; i += 2) {
+      const kana = row[i] || '';
+      const romaji = row[i + 1] || '';
+      if (kana) {
+        html += `<div class="kana-cell" onclick="speakKana('${kana}')">
+          <span class="jp">${kana}</span><span class="romaji">${romaji}</span></div>`;
+      } else {
+        html += '<div class="kana-cell empty"></div>';
+      }
+    }
+  }
+  grid.innerHTML = html;
+}
+
+// ======================== SPEECH ========================
+
+let speechRate = 0.85;
+
+function updateSpeechRate() {
+  speechRate = parseFloat(document.getElementById('voice-rate').value);
+}
+
+function getJapaneseVoice() {
+  const voices = speechSynthesis.getVoices();
+  // Prefer a Japanese voice
+  let jaVoice = voices.find(v => v.lang.startsWith('ja'));
+  if (!jaVoice) {
+    // Fallback: try to find any voice that might handle Japanese
+    jaVoice = voices.find(v => v.lang.includes('ja')) || voices.find(v => v.lang.startsWith('zh')) || voices[0];
+  }
+  return jaVoice;
+}
+
+function speak(text, rate) {
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'ja-JP';
+  utterance.rate = rate || speechRate;
+  utterance.pitch = 1.0;
+  const voice = getJapaneseVoice();
+  if (voice) utterance.voice = voice;
+  speechSynthesis.speak(utterance);
+  return utterance;
+}
+
+function speakKana(kana) {
+  // Romaji don't speak well via TTS, so only speak kana
+  speak(kana, 0.8);
+  toast('🔊 ' + kana);
+}
+
+function speakCard() {
+  const text = document.getElementById('flashcard-front').textContent;
+  speak(text, speechRate);
+  toast('🔊 ' + text);
+}
+
+function speakCardSlow() {
+  const text = document.getElementById('flashcard-front').textContent;
+  // Split into mora for slow reading
+  speak(text, 0.5);
+  toast('🐢 慢速: ' + text);
+}
+
+function speakQuiz() {
+  const text = document.getElementById('quiz-question').textContent;
+  speak(text, 0.8);
+  toast('🔊 ' + text);
+}
+
+// Ensure voices are loaded
+speechSynthesis.onvoiceschanged = () => getJapaneseVoice();
+
+// ======================== FLASHCARD ========================
+
+let cardIndex = 0;
+let cardFlipped = false;
+
+function loadCard(index) {
+  if (index < 0) index = vocabulary.length - 1;
+  if (index >= vocabulary.length) index = 0;
+  cardIndex = index;
+  cardFlipped = false;
+  const card = vocabulary[index];
+  document.getElementById('flashcard-front').textContent = card.jp;
+  document.getElementById('flashcard-meaning').textContent = card.meaning;
+  document.getElementById('flashcard-reading').textContent = card.reading;
+  document.getElementById('flashcard-type').textContent = card.type;
+  document.getElementById('flashcard').classList.remove('flipped');
+  // Progress
+  const pct = ((index + 1) / vocabulary.length) * 100;
+  document.getElementById('flashcard-progress').style.width = pct + '%';
+  // Auto-speak
+  setTimeout(() => speak(card.jp, speechRate), 300);
+}
+
+function flipCard() {
+  cardFlipped = !cardFlipped;
+  document.getElementById('flashcard').classList.toggle('flipped', cardFlipped);
+}
+
+function nextCard() { loadCard(cardIndex + 1); }
+function prevCard() { loadCard(cardIndex - 1); }
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  const fc = document.getElementById('flashcards-section');
+  if (!fc.classList.contains('visible')) return;
+  if (e.key === 'ArrowRight') nextCard();
+  if (e.key === 'ArrowLeft') prevCard();
+  if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); flipCard(); }
+  if (e.key === 's' || e.key === 'S') speakCard();
+});
+
+// ======================== QUIZ ========================
+
+let quizMode = 'kana-to-romaji';
+let quizItems = [];
+let quizCorrect = 0;
+let quizWrong = 0;
+let quizCurrent = 0;
+let quizAnswered = false;
+
+function setQuizMode(mode) {
+  quizMode = mode;
+  document.querySelectorAll('.quiz-mode-selector button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-qmode="${mode}"]`).classList.add('active');
+  generateQuiz();
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generateQuiz() {
+  quizCorrect = 0;
+  quizWrong = 0;
+  quizCurrent = 0;
+  quizAnswered = false;
+  document.getElementById('quiz-correct').textContent = '0';
+  document.getElementById('quiz-wrong').textContent = '0';
+
+  if (quizMode === 'kana-to-romaji') {
+    quizItems = shuffle(flattenKana(hiragana).concat(flattenKana(katakana)));
+  } else if (quizMode === 'romaji-to-kana') {
+    quizItems = shuffle(flattenKana(hiragana).concat(flattenKana(katakana)));
+  } else if (quizMode === 'jp-to-zh') {
+    quizItems = shuffle(vocabulary.map(v => ({ kana: v.jp, romaji: v.meaning, extra: v.reading })));
+  }
+  showQuizQuestion();
+}
+
+function showQuizQuestion() {
+  if (quizCurrent >= quizItems.length) {
+    document.getElementById('quiz-question').textContent = '🎉';
+    document.getElementById('quiz-prompt').textContent = `完成! 正确率: ${Math.round(quizCorrect/(quizCorrect+quizWrong||1)*100)}%`;
+    document.getElementById('quiz-options').innerHTML = '<button onclick="generateQuiz()" style="grid-column:1/-1">再来一轮</button>';
+    document.getElementById('quiz-progress').textContent = `${quizItems.length}/${quizItems.length}`;
+    return;
+  }
+  quizAnswered = false;
+  const item = quizItems[quizCurrent];
+  document.getElementById('quiz-progress').textContent = `${quizCurrent}/${quizItems.length}`;
+
+  if (quizMode === 'kana-to-romaji') {
+    document.getElementById('quiz-prompt').textContent = '选择正确的罗马字读音';
+    document.getElementById('quiz-question').textContent = item.kana;
+    const wrongs = shuffle(
+      flattenKana(hiragana).concat(flattenKana(katakana))
+        .filter(k => k.romaji !== item.romaji)
+    ).slice(0, 3).map(k => k.romaji);
+    const options = shuffle([item.romaji, ...wrongs]);
+    document.getElementById('quiz-options').innerHTML = options.map(o =>
+      `<button onclick="answerQuiz('${o}', '${item.romaji}', this)">${o}</button>`
+    ).join('');
+
+  } else if (quizMode === 'romaji-to-kana') {
+    document.getElementById('quiz-prompt').textContent = '选择正确的假名';
+    document.getElementById('quiz-question').textContent = item.romaji;
+    const wrongs = shuffle(
+      flattenKana(hiragana).concat(flattenKana(katakana))
+        .filter(k => k.kana !== item.kana)
+    ).slice(0, 3).map(k => k.kana);
+    const options = shuffle([item.kana, ...wrongs]);
+    document.getElementById('quiz-options').innerHTML = options.map(o =>
+      `<button onclick="answerQuiz('${o}', '${item.kana}', this)">${o}</button>`
+    ).join('');
+
+  } else if (quizMode === 'jp-to-zh') {
+    document.getElementById('quiz-prompt').textContent = '选择正确的中文意思';
+    document.getElementById('quiz-question').textContent = item.kana;
+    const wrongs = shuffle(
+      vocabulary.filter(v => v.meaning !== item.romaji)
+    ).slice(0, 3).map(v => v.meaning);
+    const options = shuffle([item.romaji, ...wrongs]);
+    document.getElementById('quiz-options').innerHTML = options.map(o =>
+      `<button onclick="answerQuiz('${o.replace(/'/g, "\\'")}', '${item.romaji.replace(/'/g, "\\'")}', this)">${o}</button>`
+    ).join('');
+  }
+}
+
+function answerQuiz(chosen, correct, btn) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+
+  const isCorrect = chosen === correct;
+  if (isCorrect) {
+    quizCorrect++;
+    btn.classList.add('correct');
+    document.getElementById('quiz-correct').textContent = quizCorrect;
+  } else {
+    quizWrong++;
+    btn.classList.add('wrong');
+    document.getElementById('quiz-wrong').textContent = quizWrong;
+    // Highlight correct answer
+    document.querySelectorAll('#quiz-options button').forEach(b => {
+      if (b.textContent === correct) b.classList.add('correct');
+    });
+  }
+
+  setTimeout(() => {
+    quizCurrent++;
+    showQuizQuestion();
+  }, isCorrect ? 600 : 1200);
+}
+
+// ======================== TOAST ========================
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+// ======================== INIT ========================
+
+renderKanaGrid();
+loadCard(0);
+</script>
+
+</body>
+</html>
