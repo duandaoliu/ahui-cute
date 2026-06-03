@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>✨ 阿辉的小可爱 ✨</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: linear-gradient(135deg, #fce4ec, #f3e5f5, #e8eaf6);
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* === 主角：萌萌小团子 === */
+  .character {
+    position: absolute;
+    bottom: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-15px); }
+  }
+  .character:active { animation: squish 0.3s ease; }
+  @keyframes squish {
+    0% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(0.9, 1.1); }
+    100% { transform: translateX(-50%) scale(1); }
+  }
+
+  /* 身体 */
+  .body {
+    width: 120px; height: 120px;
+    background: radial-gradient(circle at 40% 35%, #fff5f5, #ffb8c6);
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 8px 30px rgba(255, 140, 160, 0.35), inset 0 -5px 15px rgba(255, 120, 140, 0.3);
+  }
+  /* 耳朵 */
+  .ear-left, .ear-right {
+    width: 28px; height: 34px;
+    background: radial-gradient(circle at 50% 30%, #fff0f3, #f48fb1);
+    border-radius: 50% 50% 40% 40%;
+    position: absolute;
+    top: -20px;
+    box-shadow: inset 0 -3px 5px rgba(255, 120, 150, 0.25);
+  }
+  .ear-left { left: 18px; transform: rotate(-15deg); }
+  .ear-right { right: 18px; transform: rotate(15deg); }
+  .ear-inner {
+    width: 14px; height: 18px;
+    background: #ffcdd2;
+    border-radius: 50%;
+    position: absolute;
+    top: 6px; left: 7px;
+  }
+  /* 眼睛 */
+  .eyes { display: flex; gap: 20px; position: absolute; top: 36px; left: 50%; transform: translateX(-50%); }
+  .eye {
+    width: 16px; height: 18px;
+    background: #4a2c2a;
+    border-radius: 50%;
+    position: relative;
+    animation: blink 3s infinite;
+  }
+  @keyframes blink {
+    0%, 94%, 100% { transform: scaleY(1); }
+    97% { transform: scaleY(0.1); }
+  }
+  .eye::after {
+    content: '';
+    width: 5px; height: 5px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 3px; left: 4px;
+  }
+  /* 嘴巴 */
+  .mouth {
+    width: 16px; height: 8px;
+    border-bottom: 3px solid #e57373;
+    border-radius: 0 0 50% 50%;
+    position: absolute;
+    top: 58px; left: 50%;
+    transform: translateX(-50%);
+  }
+  /* 腮红 */
+  .blush-l, .blush-r {
+    width: 18px; height: 10px;
+    background: rgba(255, 150, 160, 0.45);
+    border-radius: 50%;
+    position: absolute;
+    top: 48px;
+  }
+  .blush-l { left: 10px; }
+  .blush-r { right: 10px; }
+  /* 小jio */
+  .feet { display: flex; gap: 30px; margin-top: -8px; }
+  .foot {
+    width: 22px; height: 16px;
+    background: #ffb8c6;
+    border-radius: 50%;
+    box-shadow: inset 0 3px 5px rgba(255, 140, 160, 0.3);
+  }
+
+  /* 影子 */
+  .shadow {
+    width: 80px; height: 12px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 50%;
+    margin-top: 6px;
+  }
+
+  /* === 对话气泡 === */
+  .speech {
+    position: absolute;
+    bottom: 55%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 20px;
+    padding: 14px 20px;
+    font-size: 16px;
+    color: #5d4037;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    z-index: 20;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    pointer-events: none;
+  }
+  .speech::after {
+    content: '';
+    position: absolute;
+    bottom: -10px; left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 12px solid white;
+  }
+  .speech.show { opacity: 1; transform: translateX(-50%) translateY(-10px); }
+
+  /* === 爱心粒子 === */
+  .heart {
+    position: absolute;
+    pointer-events: none;
+    font-size: 24px;
+    animation: rise 2s ease-out forwards;
+    z-index: 30;
+  }
+  @keyframes rise {
+    0% { opacity: 1; transform: translateY(0) scale(0.5) rotate(0deg); }
+    30% { opacity: 1; transform: translateY(-60px) scale(1.2) rotate(15deg); }
+    100% { opacity: 0; transform: translateY(-300px) scale(0.3) rotate(-20deg); }
+  }
+
+  /* === 星星背景 === */
+  .stars { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+  .star {
+    position: absolute;
+    font-size: 14px;
+    animation: twinkle 2s ease-in-out infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  /* === 底部文字 === */
+  .footer {
+    position: absolute;
+    bottom: 8%;
+    width: 100%;
+    text-align: center;
+    color: #b39ddb;
+    font-size: 14px;
+    letter-spacing: 2px;
+    z-index: 5;
+    animation: fadeIn 2s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* === 顶部装饰 === */
+  .title {
+    position: absolute;
+    top: 8%;
+    width: 100%;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    color: #ec407a;
+    letter-spacing: 3px;
+    z-index: 5;
+    text-shadow: 0 2px 10px rgba(236, 64, 122, 0.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="title">🌟 戳戳我呀 🌟</div>
+
+<div class="speech" id="speech"></div>
+
+<div class="character" id="character">
+  <div class="body">
+    <div class="ear-left"><div class="ear-inner"></div></div>
+    <div class="ear-right"><div class="ear-inner"></div></div>
+    <div class="eyes">
+      <div class="eye"></div>
+      <div class="eye"></div>
+    </div>
+    <div class="mouth"></div>
+    <div class="blush-l"></div>
+    <div class="blush-r"></div>
+  </div>
+  <div class="feet">
+    <div class="foot"></div>
+    <div class="foot"></div>
+  </div>
+  <div class="shadow"></div>
+</div>
+
+<div class="stars" id="stars"></div>
+
+<div class="footer">💕 阿辉 & c宝 💕</div>
+
+<script>
+  const character = document.getElementById('character');
+  const speech = document.getElementById('speech');
+  const starsContainer = document.getElementById('stars');
+
+  // 随机对话
+  const msgs = [
+    '你好呀，阿辉！👋',
+    '今天也要开心哦~',
+    '戳到我了！好痒 😆',
+    '嘿嘿，再来一下嘛',
+    '你真好呀~ 💖',
+    'mua! 给你一颗小心心',
+    '阿辉是最棒的！🌟',
+    '今天工作辛苦了~',
+    '抱抱！🤗',
+    '饿了吗？记得吃饭哦 🍜',
+    '我在呢我在呢！',
+    '耶！又被戳啦 ✨',
+    '要不要听个笑话？',
+    'c宝喜欢你！',
+  ];
+
+  let lastMsgIdx = -1;
+  function randomMsg() {
+    let idx;
+    do { idx = Math.floor(Math.random() * msgs.length); } while (idx === lastMsgIdx && msgs.length > 1);
+    lastMsgIdx = idx;
+    return msgs[idx];
+  }
+
+  // 显示对话气泡
+  function showSpeech(msg) {
+    speech.textContent = msg;
+    speech.classList.add('show');
+    clearTimeout(speech._timeout);
+    speech._timeout = setTimeout(() => speech.classList.remove('show'), 2500);
+  }
+
+  // 发射爱心
+  const emojis = ['💕', '💖', '💗', '💝', '💘', '🩷', '✨', '🌟', '💫', '🎀'];
+  function spawnHeart(x, y) {
+    const heart = document.createElement('span');
+    heart.className = 'heart';
+    heart.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    heart.style.left = x + 'px';
+    heart.style.top = y + 'px';
+    heart.style.fontSize = (20 + Math.random() * 28) + 'px';
+    document.body.appendChild(heart);
+    heart.addEventListener('animationend', () => heart.remove());
+  }
+
+  // 点击角色
+  character.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    // 抖动效果
+    character.style.animation = 'none';
+    character.offsetHeight;
+    character.style.animation = 'float 3s ease-in-out infinite';
+
+    const rect = character.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 3;
+    // 多颗爱心
+    for (let i = 0; i < 6; i++) {
+      setTimeout(() => {
+        spawnHeart(cx + (Math.random() - 0.5) * 120, cy + (Math.random() - 0.5) * 60);
+      }, i * 40);
+    }
+    showSpeech(randomMsg());
+  });
+
+  // 点击页面其他地方也出爱心
+  document.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.character')) return;
+    spawnHeart(e.clientX, e.clientY);
+  });
+
+  // 背景星星
+  for (let i = 0; i < 25; i++) {
+    const star = document.createElement('span');
+    star.className = 'star';
+    star.textContent = ['✦', '·', '✧', '⋆', '˚'][Math.floor(Math.random() * 5)];
+    star.style.left = Math.random() * 94 + '%';
+    star.style.top = Math.random() * 90 + '%';
+    star.style.animationDelay = Math.random() * 3 + 's';
+    star.style.animationDuration = (1.5 + Math.random() * 3) + 's';
+    star.style.opacity = 0.3 + Math.random() * 0.4;
+    starsContainer.appendChild(star);
+  }
+
+  // 初始欢迎
+  setTimeout(() => showSpeech('戳戳我呀~ 💕'), 800);
+</script>
+
+</body>
+</html>
